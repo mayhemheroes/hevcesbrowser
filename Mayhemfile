@@ -1,0 +1,5 @@
+project: hevcesbrowser
+target: hevcesbrowser-console
+
+cmds:
+  - cmd: /repo/build/hevcesbrowser_console -i @@ -o /dev/null
