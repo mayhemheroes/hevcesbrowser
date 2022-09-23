@@ -1,7 +1,5 @@
 project: hevcesbrowser
 target: hevcesbrowser-console
-testsuite:
-  - file://test
 
 cmds:
   - cmd: /repo/build/hevcesbrowser_console -i @@ -o /dev/null
