@@ -1,0 +1,103 @@
+# ============================================================================
+# RLENV Patch Playground Dockerfile
+# Single-stage build for hevcesbrowser vulnerability patching
+# ============================================================================
+# Original image: ghcr.io/mayhemheroes/hevcesbrowser:master
+# Git revision: a22af709a23b1145bf50cf75b4ce3cadafdf074e
+# Target: hevcesbrowser-console
+# ============================================================================
+
+# ============================================================================
+# 1. Base Image Selection
+# ============================================================================
+FROM --platform=linux/amd64 ubuntu:20.04
+
+# ============================================================================
+# 2. System Dependencies (merged from all stages)
+# ============================================================================
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    build-essential \
+    cmake \
+    qt5-default \
+    libboost-all-dev \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# 3. Copy MTV Binary (REQUIRED for validation)
+# ============================================================================
+COPY --from="us-east4-docker.pkg.dev/forallsecure-1/rlenv-staging/rlenv-mcp-static:latest" \
+     /rlenv/bin/mtv /rlenv/bin/mtv
+
+# ============================================================================
+# 4. Language-Specific Setup
+# ============================================================================
+ENV FUZZING_LANGUAGE=cpp
+ENV LD_LIBRARY_PATH=/deps
+
+# ============================================================================
+# 5. Copy Source Code (EARLY - source exists now)
+# ============================================================================
+COPY . /rlenv/source/hevcesbrowser/
+
+# ============================================================================
+# 6. Make Source World-Writable (REQUIRED for non-root rebuilds)
+# ============================================================================
+RUN chmod -R 777 /rlenv/source
+
+# ============================================================================
+# 7. Set Working Directory
+# ============================================================================
+WORKDIR /rlenv/source/hevcesbrowser/
+
+# ============================================================================
+# 8. Build Application
+# ============================================================================
+RUN mkdir -p build && cd build && \
+    cmake .. && \
+    make -j8
+
+# ============================================================================
+# 9. Extract and Copy Runtime Dependencies
+# ============================================================================
+RUN mkdir -p /deps && \
+    ldd /rlenv/source/hevcesbrowser/build/hevcesbrowser_console | tr -s '[:blank:]' '\n' | grep '^/' | xargs -I % sh -c 'cp % /deps;' || true
+
+# ============================================================================
+# 10. Create Symlink for Mayhemfile Compatibility
+# ============================================================================
+# Mayhemfile expects /repo/build/hevcesbrowser_console
+RUN mkdir -p /repo && \
+    ln -sf /rlenv/source/hevcesbrowser/build /repo/build
+
+# ============================================================================
+# 11. Permission Management (REQUIRED)
+# ============================================================================
+# Target executable (rwxrw-rw-)
+RUN chmod 766 /rlenv/source/hevcesbrowser/build/hevcesbrowser_console
+
+# Build output directory
+RUN chmod -R 777 /rlenv/source/hevcesbrowser/build 2>/dev/null || true
+
+# Dependencies directory
+RUN chmod -R 777 /deps 2>/dev/null || true
+
+# ============================================================================
+# 12. Copy rlenv Directory (MUST BE NEAR END - doesn't exist yet!)
+# ============================================================================
+COPY rlenv /rlenv
+
+# ============================================================================
+# 13. Final Permission Fix (REQUIRED)
+# ============================================================================
+RUN chmod -R 777 /rlenv/source
+
+# ============================================================================
+# 14. Set Entry Point
+# ============================================================================
+CMD ["/repo/build/hevcesbrowser_console"]
+
+# ============================================================================
+# 15. Reset Working Directory
+# ============================================================================
+WORKDIR /
