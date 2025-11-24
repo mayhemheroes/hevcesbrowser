@@ -8,6 +8,6 @@
   "run_image_with_digest": "ghcr.io/mayhemheroes/hevcesbrowser@sha256:072a2e1159cadabbb5ad5a5c1ff19445a5cf8746f70bbbef0ac464cd89c34e46",
   "git_repo_url": "git@github.com:mayhemheroes/hevcesbrowser.git",
   "git_revision": "a22af709a23b1145bf50cf75b4ce3cadafdf074e",
-  "target_executable": null,
+  "target_executable": "/repo/build/hevcesbrowser_console",
   "working_dir": ""
 }
